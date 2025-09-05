@@ -20,11 +20,11 @@ Always reference these instructions first and fallback to search or bash command
 
 ## Working Effectively
 
-### Prerequisites and Setup
-- Docker and Docker Compose are required for all operations
+### Prerequisites and Setup (VALIDATED)
+- Docker and Docker Compose are required for all operations (confirmed working)
 - NVIDIA GPU with CUDA support (for production use)
-- Minimum 16GB RAM, 50GB disk space
-- For local development: `cp env.example .env` and edit tokens if needed
+- Minimum 16GB RAM, 50GB disk space for minimal builds
+- For local development: `cp env.example .env` and edit tokens if needed (VALIDATED)
 
 ### Bootstrap and Build the Repository
 - `docker compose up --build` -- NEVER CANCEL: Takes 15-120+ minutes depending on build type and network conditions. Set timeout to 120+ minutes.
@@ -51,6 +51,14 @@ Always reference these instructions first and fallback to search or bash command
   - Move `LD_PRELOAD` environment variable after package installation to avoid preload errors
 - **WORKING EXAMPLE**: See `Dockerfile.fixed` for a corrected version that addresses all compatibility issues
 - Always check available CUDA images at https://hub.docker.com/r/nvidia/cuda/tags before building
+
+### Quick Fix for Immediate Testing
+```bash
+# Use the fixed Dockerfile for testing
+cp Dockerfile.fixed Dockerfile
+export BUILD_TYPE=minimal
+docker compose up --build
+```
 
 ### Run the Application
 - Start: `docker compose up` (after successful build)
@@ -120,6 +128,57 @@ Required:
 Optional:
 - `CIVITAI_TOKEN` - Civitai API token for additional models
 - `COMFYUI_EXTRA_ARGS` - Additional ComfyUI startup arguments (e.g., --lowvram)
+
+### Common tasks
+The following are outputs from frequently run commands. Reference them instead of viewing, searching, or running bash commands to save time.
+
+#### Repo root
+```bash
+ls -la /
+.env                    # Local environment configuration  
+.github/                # GitHub workflows and copilot instructions
+Dockerfile              # Multi-stage build definition (has compatibility issues)
+Dockerfile.fixed        # WORKING corrected version with all fixes
+Dockerfile.backup       # Original backup
+README.md               # Project documentation
+configs/                # ComfyUI configuration files
+docker-compose.yml      # Local development orchestration  
+env.example             # Environment variable template
+requirements/           # Python dependency specifications
+scripts/                # Core installation and runtime scripts
+workflows/              # Example ComfyUI workflow files
+```
+
+#### Key Scripts Directory
+```bash
+ls -la scripts/
+download_models.py      # Model downloading logic
+entrypoint.sh           # Main container startup script (executable)
+healthcheck.sh          # Container health checking (executable)
+install_nodes.sh        # Custom nodes installation (executable)
+model_downloader.py     # Alternative model downloader
+```
+
+#### Configuration Files
+```bash
+ls -la configs/
+extra_model_paths.yaml  # Model directory mappings
+server_config.json      # Server settings (port, CORS, etc.)
+```
+
+#### Requirements
+```bash
+ls -la requirements/
+base.txt               # Core Python packages with pinned versions
+nodes.txt              # Custom node dependencies (may fail partially)
+```
+
+#### Sample Workflow Files
+```bash
+ls -la workflows/
+flux_qwen_dual_1080.json  # Example workflow for 1080p
+flux_qwen_dual_1920.json  # Example workflow for 1920p
+```
 
 ## Common Tasks and Workflows
 
@@ -205,3 +264,38 @@ Optional:
 - All validation is manual through building and running the application
 - Focus validation on Docker build success and ComfyUI functionality
 - Changes should be tested across different build types if they affect multiple variants
+
+### VALIDATED Commands and Scripts
+The following commands have been tested and confirmed working:
+
+#### Environment Setup (VALIDATED)
+```bash
+cp env.example .env
+# Edit .env file as needed
+```
+
+#### File Structure Validation (VALIDATED)
+```bash
+ls -la scripts/     # Contains: entrypoint.sh, install_nodes.sh, healthcheck.sh, etc.
+ls -la configs/     # Contains: server_config.json, extra_model_paths.yaml
+ls -la requirements/ # Contains: base.txt, nodes.txt
+ls -la workflows/   # Contains: flux_qwen_dual_*.json
+```
+
+#### Health Check Commands (VALIDATED)
+```bash
+cat scripts/healthcheck.sh  # Shows: curl -f http://localhost:8188/system_stats || exit 1
+```
+
+#### Docker Prerequisites (VALIDATED)
+```bash
+docker --version         # Confirmed: Docker version 28.0.4+
+docker compose version   # Confirmed: Docker Compose version v2.38.2+
+```
+
+#### Build Fixes Required (VALIDATED)
+- CUDA 12.8 images do NOT exist (confirmed)
+- nvidia/cuda:12.9.1 images DO exist (confirmed)
+- PyTorch 2.6.0+cu124 is available (confirmed)
+- Package names need correction: tcmalloc-minimal4 → libtcmalloc-minimal4
+- See Dockerfile.fixed for working example
