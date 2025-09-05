@@ -19,7 +19,11 @@ def print_env_info():
 
 def validate_pytorch_version():
     """Überprüft, ob die PyTorch-Version korrekt ist."""
-    major, minor, _ = torch.__version__.split('.')[:3]
+    version_parts = torch.__version__.split('.')
+    # Pad mit '0', falls Patch-Version fehlt
+    while len(version_parts) < 3:
+        version_parts.append('0')
+    major, minor, _ = version_parts[:3]
     if int(major) != 2 or int(minor) != 8:
         print(f"WARNUNG: Erwartete PyTorch 2.8.x, gefunden: {torch.__version__}")
         return False
@@ -34,7 +38,7 @@ def validate_cuda_version():
     
     cuda_version = torch.version.cuda
     if not cuda_version.startswith("12.8"):
-        print(f"WARNUNG: Erwartete CUDA 12.8, gefunden: {cuda_version}")
+        print(f"WARNUNG: Erwartete CUDA 12.8.x, gefunden: {cuda_version}")
         return False
     
     print("CUDA Version ist korrekt!")
