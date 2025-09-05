@@ -8,7 +8,7 @@ echo "📦 Installing Custom Nodes (Build Type: $BUILD_TYPE)..."
 
 # Core nodes (all builds)
 CORE_NODES=(
-    "https://github.com/Comfy-Org/ComfyUI-Manager.git|main"
+    "https://github.com/Comfy-Org/ComfyUI-Manager.git|7aec23e"
     "https://github.com/crystian/ComfyUI-Crystools.git|v1.14.0"
     "https://github.com/pythongosssss/ComfyUI-Custom-Scripts.git|9916c13"
 )
@@ -41,45 +41,17 @@ FULL_NODES=(
 
 # Function to clone with specific commit/tag
 clone_node() {
-        local repo_url="${1%%|*}"
-        local commit="${1##*|}"
-        local repo_name=$(basename "$repo_url" .git)
-
-        echo "Installing $repo_name..."
-        if [ -d "$repo_name" ]; then
-                echo "  Already exists, skipping..."
-                return 0
-        fi
-
-        # Clone default branch first (shallow), then try to checkout requested ref
-        if ! git clone --depth 1 "$repo_url" "$repo_name"; then
-                echo "  Failed to clone $repo_url"
-                return 0
-        fi
-
-        (
-            cd "$repo_name"
-            # Fetch tags/refs shallowly to try ref resolution
-            git fetch --tags --force --prune --depth 1 >/dev/null 2>&1 || true
-
-            local tried_ref=""
-            local found_ref=""
-            for ref in "$commit" "origin/$commit" "tags/$commit"; do
-                tried_ref="$ref"
-                if git rev-parse -q --verify "$ref^{commit}" >/dev/null 2>&1; then
-                    if git checkout -q "$ref" >/dev/null 2>&1; then
-                        found_ref="$ref"
-                        break
-                    fi
-                fi
-            done
-
-            if [ -n "$found_ref" ]; then
-                echo "  Checked out $found_ref"
-            else
-                echo "  Ref '$commit' not found; staying on default branch"
-            fi
-        )
+    local repo_url="${1%%|*}"
+    local commit="${1##*|}"
+    local repo_name=$(basename "$repo_url" .git)
+    
+    echo "Installing $repo_name..."
+    if [ -d "$repo_name" ]; then
+        echo "  Already exists, skipping..."
+    else
+        git clone --depth 1 --branch "$commit" "$repo_url" 2>/dev/null || \
+        (git clone "$repo_url" && cd "$repo_name" && git checkout "$commit")
+    fi
 }
 
 # Install based on build type
@@ -102,21 +74,17 @@ if [ "$BUILD_TYPE" = "full" ]; then
     done
 fi
 
-if [ "${SKIP_NODE_PIP:-0}" != "1" ]; then
-    # Install requirements for each node
-    echo "📚 Installing node requirements..."
-    for dir in */; do
-            if [ -f "$dir/requirements.txt" ]; then
-                    echo "Installing requirements for $dir"
-                    python3 -m pip install --no-cache-dir -r "$dir/requirements.txt" 2>/dev/null || true
-            fi
-            if [ -f "$dir/pyproject.toml" ]; then
-                    echo "Installing from pyproject.toml for $dir"
-                    python3 -m pip install --no-cache-dir "$dir" 2>/dev/null || true
-            fi
-    done
-else
-    echo "⏭️  Skipping per-node pip installs (SKIP_NODE_PIP=1)"
-fi
+# Install requirements for each node
+echo "📚 Installing node requirements..."
+for dir in */; do
+    if [ -f "$dir/requirements.txt" ]; then
+        echo "Installing requirements for $dir"
+        python3 -m pip install --no-cache-dir -r "$dir/requirements.txt" 2>/dev/null || true
+    fi
+    if [ -f "$dir/pyproject.toml" ]; then
+        echo "Installing from pyproject.toml for $dir"
+        python3 -m pip install --no-cache-dir "$dir" 2>/dev/null || true
+    fi
+done
 
 echo "✅ Custom nodes installed successfully!"
