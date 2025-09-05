@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-devel-ubuntu22.04 AS builder
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -14,10 +14,10 @@ ENV TZ=UTC \
     PYTHONUNBUFFERED=1 \
     COMFYUI_PATH=/opt/ComfyUI
 
-# System Dependencies (PyTorch image hat schon Python 3.11 und CUDA)
+# System Dependencies (PyTorch image already includes Python)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git git-lfs curl wget aria2 rsync unzip p7zip-full \
-    build-essential \
+    build-essential pkg-config cmake ninja-build \
     libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
     libgoogle-perftools-dev tcmalloc-minimal4 \
     ffmpeg libsndfile1 \
@@ -25,16 +25,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# cuDNN is already included in the base image
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip wheel setuptools
+
+# PyTorch 2.8.0 with CUDA 12.8 is already included in the base image
+
 # Install ComfyUI
 WORKDIR /opt
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git
 
 WORKDIR ${COMFYUI_PATH}
-RUN pip install -r requirements.txt
+RUN python3 -m pip install -r requirements.txt
 
 # Install additional packages
 COPY requirements/base.txt /tmp/base.txt
-RUN pip install -r /tmp/base.txt || true
+RUN python3 -m pip install -r /tmp/base.txt || true
 
 # Install Custom Nodes
 COPY scripts/install_nodes.sh /tmp/install_nodes.sh
@@ -43,13 +50,13 @@ RUN chmod +x /tmp/install_nodes.sh && \
 
 # Install node requirements
 COPY requirements/nodes.txt /tmp/nodes.txt
-RUN pip install -r /tmp/nodes.txt || true
+RUN python3 -m pip install -r /tmp/nodes.txt || true
 
 # Copy model download script
 COPY scripts/download_models.py /tmp/download_models.py
 
-# Final Stage - auch PyTorch Runtime Image
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-runtime-ubuntu22.04
+# Final Stage
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -58,12 +65,15 @@ ENV TZ=UTC \
     PIP_NO_CACHE_DIR=1 \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
     PYTHONUNBUFFERED=1 \
-    PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True" \
-    CUDA_MODULE_LOADING=LAZY \
+    PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256" \
+    TORCH_ALLOW_TF32_CUBLAS=1 \
+    NVIDIA_TF32_OVERRIDE=1 \
+    CUDA_DEVICE_MAX_CONNECTIONS=1 \
+    TORCH_SDPA_BACKEND=flash \
     COMFYUI_PATH=/opt/ComfyUI \
     LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4
 
-# Install runtime dependencies
+# Install runtime dependencies (PyTorch image already includes Python)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git git-lfs curl wget \
     libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
