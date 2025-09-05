@@ -1,0 +1,99 @@
+{
+  "1": {
+    "inputs": {
+      "text": "A beautiful landscape with mountains and a lake, photorealistic, 8k",
+      "clip": ["4", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "text": "blurry, low quality, distorted",
+      "clip": ["4", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "seed": 1234567890,
+      "steps": 20,
+      "cfg": 3.5,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": ["5", 0],
+      "positive": ["1", 0],
+      "negative": ["2", 0],
+      "latent_image": ["6", 0]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text_encoder": "clip_l",
+      "text_encoder_2": "t5xxl_fp8_e4m3fn"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "5": {
+    "inputs": {
+      "model": "flux1-dev-fp8"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNETLoader"
+    }
+  },
+  "6": {
+    "inputs": {
+      "width": 1920,
+      "height": 1080,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "EmptyLatentImage"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["8", 0]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "8": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "VAE Loader"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "flux_qwen_1920",
+      "images": ["7", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

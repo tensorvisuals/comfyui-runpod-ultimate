@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  comfyui:
+    build:
+      context: .
+      args:
+        BUILD_TYPE: ${BUILD_TYPE:-standard}
+        HF_TOKEN: ${HF_TOKEN}
+        CIVITAI_TOKEN: ${CIVITAI_TOKEN}
+    image: comfyui-runpod:latest
+    container_name: comfyui
+    ports:
+      - "8188:8188"
+    volumes:
+      - ./workspace:/workspace
+      - comfyui-models:/opt/ComfyUI/models
+      - comfyui-output:/opt/ComfyUI/output
+      - comfyui-input:/opt/ComfyUI/input
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      - HF_TOKEN=${HF_TOKEN}
+      - CIVITAI_TOKEN=${CIVITAI_TOKEN}
+      - BUILD_TYPE=${BUILD_TYPE:-standard}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  comfyui-models:
+  comfyui-output:
+  comfyui-input:

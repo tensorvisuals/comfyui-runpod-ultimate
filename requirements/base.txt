@@ -1,0 +1,36 @@
+# Core dependencies with pinned versions
+accelerate==1.2.0
+transformers==4.46.3
+diffusers==0.31.0
+safetensors==0.4.5
+einops==0.8.0
+omegaconf==2.3.0
+
+# Image processing
+opencv-python-headless==4.10.0.84
+scikit-image==0.24.0
+pillow==10.4.0
+imageio==2.36.0
+imageio-ffmpeg==0.5.1
+
+# Performance
+xformers==0.0.28.post3
+onnxruntime-gpu==1.19.2
+
+# Utilities
+gitpython==3.1.43
+psutil==6.1.0
+requests==2.32.3
+pyyaml==6.0.2
+tqdm==4.67.1
+matplotlib==3.9.3
+numpy==1.26.4
+scipy==1.14.1
+
+# HF utilities
+huggingface_hub==0.26.5
+hf-transfer==0.1.8
+
+# ML utilities
+timm==1.0.12
+kornia==0.7.4

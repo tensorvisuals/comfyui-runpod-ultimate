@@ -1,0 +1,45 @@
+# ComfyUI Extra Model Paths Configuration
+# This file defines where ComfyUI should look for different types of models
+
+base_path: /workspace/models
+
+checkpoints:
+  - /workspace/models/checkpoints
+  - /opt/ComfyUI/models/checkpoints
+
+vae:
+  - /workspace/models/vae
+  - /opt/ComfyUI/models/vae
+
+loras:
+  - /workspace/models/loras
+  - /opt/ComfyUI/models/loras
+
+upscale_models:
+  - /workspace/models/upscale_models
+  - /opt/ComfyUI/models/upscale_models
+
+controlnet:
+  - /workspace/models/controlnet
+  - /opt/ComfyUI/models/controlnet
+
+text_encoders:
+  - /workspace/models/text_encoders
+  - /opt/ComfyUI/models/text_encoders
+
+diffusion_models:
+  - /workspace/models/diffusion_models
+  - /opt/ComfyUI/models/diffusion_models
+
+embeddings:
+  - /workspace/models/embeddings
+  - /opt/ComfyUI/models/embeddings
+
+hypernetworks:
+  - /workspace/models/hypernetworks
+  - /opt/ComfyUI/models/hypernetworks
+
+# Output directories
+output_directory: /workspace/output
+temp_directory: /workspace/temp
+input_directory: /workspace/input

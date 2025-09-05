@@ -1,0 +1,8 @@
+{
+  "enable_cors_header": "*",
+  "listen": "0.0.0.0",
+  "port": 8188,
+  "preview_method": "auto",
+  "use_pytorch_cross_attention": true,
+  "extra_model_paths_config": "extra_model_paths.yaml"
+}
