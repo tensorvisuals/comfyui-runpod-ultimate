@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM nvidia/cuda:12.8.0-cudnn9-devel-ubuntu22.04 AS builder
+FROM nvidia/cuda:12.8-devel-ubuntu22.04 AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -27,6 +27,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 \
     && git lfs install \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cuDNN
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcudnn9-dev libcudnn9 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -66,7 +72,7 @@ RUN if [ "${BUILD_TYPE}" = "full" ]; then \
     fi
 
 # Final Stage
-FROM nvidia/cuda:12.8.0-cudnn9-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8-runtime-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG PYTHON_VERSION=3.11
@@ -94,6 +100,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
     libgoogle-perftools-dev tcmalloc-minimal4 \
     ffmpeg libsndfile1 \
+    libcudnn9 \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 \
     && apt-get clean \
