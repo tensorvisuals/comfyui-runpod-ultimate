@@ -4,7 +4,7 @@ Production-ready Docker image for ComfyUI with FLUX.1 and Qwen-Image support, op
 
 ## ✨ Features
 
-- **CUDA 12.8 + PyTorch 2.8.0** - Latest stable stack
+- **CUDA 12.8.0 + PyTorch 2.8.0** - Latest stable stack
 - **Security First** - Non-root user, runtime secrets injection
 - **Build Variants** - Minimal, Standard, Full configurations
 - **Pre-configured Models** - FLUX.1-dev, Qwen-Image, ControlNet
@@ -80,7 +80,7 @@ open http://localhost:8188
 
 ## 🎯 Performance
 
-- **PyTorch 2.8.0** with CUDA 12.8
+- **PyTorch 2.8.0** with CUDA 12.8.0
 - **Flash Attention** via SDPA
 - **TF32 precision** enabled
 - **TCMalloc** memory optimization
@@ -98,7 +98,7 @@ open http://localhost:8188
 - GPU: RTX 5090 / RTX 6000 Ada / H200
 - RAM: 64GB+
 - Storage: 200GB
-- CUDA: 12.8+
+- CUDA: 12.8.0+
 
 ## 🔧 Environment Variables
 
@@ -122,7 +122,7 @@ COMFYUI_EXTRA_ARGS=--lowvram
 ```bash
 # Check driver version
 nvidia-smi
-# Should show 545+ for CUDA 12.8
+# Should show 545+ for CUDA 12.8.0
 ```
 
 ### Out of Memory
