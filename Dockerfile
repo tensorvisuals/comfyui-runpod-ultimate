@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-devel-ubuntu22.04 AS builder
+FROM --platform=linux/amd64 runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04 AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -14,34 +14,32 @@ ENV TZ=UTC \
     PYTHONUNBUFFERED=1 \
     COMFYUI_PATH=/opt/ComfyUI
 
-# System Dependencies (PyTorch image hat schon Python 3.11 und CUDA)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git git-lfs curl wget aria2 rsync unzip p7zip-full \
-    build-essential \
-    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
-    libgoogle-perftools-dev tcmalloc-minimal4 \
-    ffmpeg libsndfile1 \
-    && git lfs install \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# cuDNN is already included in the base image
-
-# Upgrade pip
-RUN python3 -m pip install --upgrade pip wheel setuptools
-
-# PyTorch 2.8.0 with CUDA 12.8 is already included in the base image
+# System Dependencies for builder (minimal; runtime deps installed later)
+RUN set -eux; \
+        retry() { \
+            for i in $(seq 1 5); do \
+                echo "apt-get update attempt $i"; \
+                apt-get update && return 0; \
+                echo "apt-get update failed (attempt $i), sleeping 10s"; \
+                sleep 10; \
+            done; \
+            return 1; \
+        }; \
+        retry; \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                git git-lfs curl wget \
+        ; \
+        git lfs install; \
+        apt-get clean; \
+        rm -rf /var/lib/apt/lists/*
 
 # Install ComfyUI
 WORKDIR /opt
 RUN git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git
 
 WORKDIR ${COMFYUI_PATH}
-RUN pip install -r requirements.txt
 
-# Install additional packages
-COPY requirements/base.txt /tmp/base.txt
-RUN pip install -r /tmp/base.txt || true
+# (Skip Python installs in builder to reduce layer size)
 
 # Install Custom Nodes (clone only; skip per-node pip here)
 COPY scripts/install_nodes.sh /tmp/install_nodes.sh
@@ -50,15 +48,14 @@ RUN chmod +x /tmp/install_nodes.sh && \
 
 # (Skip node requirements in builder)
 
-# Install node requirements
-COPY requirements/nodes.txt /tmp/nodes.txt
-RUN pip install -r /tmp/nodes.txt || true
+# Strip VCS metadata to shrink layers before COPY to final
+RUN find ${COMFYUI_PATH} -type d -name .git -prune -exec rm -rf {} +
 
 # Copy model download script
 COPY scripts/download_models.py /tmp/download_models.py
 
 # Final Stage - auch PyTorch Runtime Image
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-runtime-ubuntu22.04
+FROM --platform=linux/amd64 runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -67,22 +64,33 @@ ENV TZ=UTC \
     PIP_NO_CACHE_DIR=1 \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
     PYTHONUNBUFFERED=1 \
-    PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256" \
-    TORCH_ALLOW_TF32_CUBLAS=1 \
-    NVIDIA_TF32_OVERRIDE=1 \
-    CUDA_DEVICE_MAX_CONNECTIONS=1 \
-    TORCH_SDPA_BACKEND=flash \
-    COMFYUI_PATH=/opt/ComfyUI \
-    PATH="/home/runpod/.local/bin:${PATH}"
+    PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True" \
+    CUDA_MODULE_LOADING=LAZY \
+    COMFYUI_PATH=/opt/ComfyUI
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git git-lfs curl wget \
-    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
-    libgoogle-perftools-dev tcmalloc-minimal4 \
-    ffmpeg libsndfile1 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+        retry() { \
+            for i in $(seq 1 5); do \
+                echo "apt-get update attempt $i"; \
+                apt-get update && return 0; \
+                echo "apt-get update failed (attempt $i), sleeping 10s"; \
+                sleep 10; \
+            done; \
+            return 1; \
+        }; \
+        retry; \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                git git-lfs curl wget \
+                libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
+                libgoogle-perftools-dev libtcmalloc-minimal4 \
+                ffmpeg libsndfile1 \
+        ; \
+        apt-get clean; \
+        rm -rf /var/lib/apt/lists/*
+
+# Set LD_PRELOAD only after libtcmalloc is installed to avoid preload warnings during earlier steps
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4
 
 # Create non-root user
 RUN useradd -m -u 1000 -s /bin/bash runpod && \
@@ -92,9 +100,24 @@ RUN useradd -m -u 1000 -s /bin/bash runpod && \
 # Copy from builder
 COPY --from=builder --chown=runpod:runpod /opt/ComfyUI ${COMFYUI_PATH}
 
-# Provide requirement files for runtime installation in entrypoint
+# Install Python dependencies in the runtime image to ensure availability
 COPY requirements/base.txt /tmp/base.txt
 COPY requirements/nodes.txt /tmp/nodes.txt
+RUN set -eux; \
+    python3 -m pip install --no-cache-dir -r ${COMFYUI_PATH}/requirements.txt; \
+    python3 -m pip install --no-cache-dir -r /tmp/base.txt || true; \
+    python3 -m pip install --no-cache-dir -r /tmp/nodes.txt || true; \
+    cd ${COMFYUI_PATH}/custom_nodes; \
+    for dir in */; do \
+        if [ -f "$dir/requirements.txt" ]; then \
+            echo "Installing requirements for $dir"; \
+            python3 -m pip install --no-cache-dir -r "$dir/requirements.txt" || true; \
+        fi; \
+        if [ -f "$dir/pyproject.toml" ]; then \
+            echo "Installing from pyproject.toml for $dir"; \
+            python3 -m pip install --no-cache-dir "$dir" || true; \
+        fi; \
+    done
 
 # Setup configs and workflows
 COPY --chown=runpod:runpod configs/server_config.json ${COMFYUI_PATH}/server_config.json
