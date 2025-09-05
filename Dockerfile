@@ -60,7 +60,7 @@ RUN python3 -m pip install -r /tmp/nodes.txt || true
 COPY scripts/download_models.py /tmp/download_models.py
 
 # Final Stage
-FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-runtime-ubuntu22.04
+FROM runpod/pytorch:0.7.0-ubuntu2204-cu1281-torch271
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG PYTHON_VERSION=3.11
