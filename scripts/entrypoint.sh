@@ -17,10 +17,10 @@ if command -v nvidia-smi &> /dev/null; then
     DRIVER_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -n1)
     echo "Driver Version: $DRIVER_VERSION"
     
-    # Check if driver supports CUDA 12.8
+    # Check if driver supports CUDA 12.4
     DRIVER_MAJOR=$(echo $DRIVER_VERSION | cut -d. -f1)
-    if [ "$DRIVER_MAJOR" -lt "545" ]; then
-        echo "⚠️ WARNING: Driver version may be too old for CUDA 12.8"
+    if [ "$DRIVER_MAJOR" -lt "525" ]; then
+        echo "⚠️ WARNING: Driver version may be too old for CUDA 12.4"
         echo "⚠️ Recommended: Driver 545+ for optimal performance"
     fi
 else

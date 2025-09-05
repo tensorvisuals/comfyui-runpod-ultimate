@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel AS builder
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Upgrade pip
 RUN python3 -m pip install --upgrade pip wheel setuptools
 
-# PyTorch 2.8.0 with CUDA 12.8 is already included in the base image
+# PyTorch 2.5.1 with CUDA 12.4 is already included in the base image
 
 # Install ComfyUI
 WORKDIR /opt
@@ -56,7 +56,7 @@ RUN python3 -m pip install -r /tmp/nodes.txt || true
 COPY scripts/download_models.py /tmp/download_models.py
 
 # Final Stage
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Validierungsskript für die Docker-Umgebung
-# Stellt sicher, dass PyTorch 2.8.0 mit CUDA 12.8 korrekt installiert ist
+# Stellt sicher, dass PyTorch 2.5.1 mit CUDA 12.4 korrekt installiert ist
 
 import sys
 import torch
@@ -24,8 +24,8 @@ def validate_pytorch_version():
     while len(version_parts) < 3:
         version_parts.append('0')
     major, minor, _ = version_parts[:3]
-    if int(major) != 2 or int(minor) != 8:
-        print(f"WARNUNG: Erwartete PyTorch 2.8.x, gefunden: {torch.__version__}")
+    if int(major) != 2 or int(minor) != 5:
+        print(f"WARNUNG: Erwartete PyTorch 2.5.x, gefunden: {torch.__version__}")
         return False
     print("PyTorch Version ist korrekt!")
     return True
@@ -37,8 +37,8 @@ def validate_cuda_version():
         return False
     
     cuda_version = torch.version.cuda
-    if not cuda_version.startswith("12.8"):
-        print(f"WARNUNG: Erwartete CUDA 12.8.x, gefunden: {cuda_version}")
+    if not cuda_version.startswith("12.4"):
+        print(f"WARNUNG: Erwartete CUDA 12.4.x, gefunden: {cuda_version}")
         return False
     
     print("CUDA Version ist korrekt!")
