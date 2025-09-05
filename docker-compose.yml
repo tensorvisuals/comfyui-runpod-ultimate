@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   comfyui:
     build:
@@ -8,8 +6,8 @@ services:
         BUILD_TYPE: ${BUILD_TYPE:-standard}
         HF_TOKEN: ${HF_TOKEN}
         CIVITAI_TOKEN: ${CIVITAI_TOKEN}
-    image: comfyui-runpod:latest
-    container_name: comfyui
+    # image: comfyui-runpod:latest
+    # container_name: comfyui
     ports:
       - "8188:8188"
     volumes:

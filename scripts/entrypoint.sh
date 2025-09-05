@@ -88,6 +88,30 @@ if [ ! -f "$MODEL_MARKER" ] && [ "${BUILD_TYPE:-standard}" != "full" ]; then
     fi
 fi
 
+# Install Python dependencies at runtime (to keep image size manageable)
+echo "📦 Ensuring Python dependencies are installed (runtime)..."
+python3 -m pip install --user --no-cache-dir -r ${COMFYUI_PATH}/requirements.txt || true
+if [ -f "/tmp/base.txt" ]; then
+    python3 -m pip install --user --no-cache-dir -r /tmp/base.txt || true
+fi
+if [ -f "/tmp/nodes.txt" ]; then
+    python3 -m pip install --user --no-cache-dir -r /tmp/nodes.txt || true
+fi
+# Per-node installs
+if [ -d "${COMFYUI_PATH}/custom_nodes" ]; then
+    for dir in ${COMFYUI_PATH}/custom_nodes/*/; do
+        [ -d "$dir" ] || continue
+        if [ -f "$dir/requirements.txt" ]; then
+            echo "Installing requirements for $dir"
+            python3 -m pip install --user --no-cache-dir -r "$dir/requirements.txt" || true
+        fi
+        if [ -f "$dir/pyproject.toml" ]; then
+            echo "Installing from pyproject.toml for $dir"
+            python3 -m pip install --user --no-cache-dir "$dir" || true
+        fi
+    done
+fi
+
 # Start ComfyUI
 cd ${COMFYUI_PATH}
 echo "🎨 Starting ComfyUI server..."
