@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.7
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-devel-ubuntu22.04 AS builder
+
+FROM --platform=linux/amd64 runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04 AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -14,16 +15,25 @@ ENV TZ=UTC \
     PYTHONUNBUFFERED=1 \
     COMFYUI_PATH=/opt/ComfyUI
 
-# System Dependencies (PyTorch image hat schon Python 3.11 und CUDA)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git git-lfs curl wget aria2 rsync unzip p7zip-full \
-    build-essential \
-    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
-    libgoogle-perftools-dev tcmalloc-minimal4 \
-    ffmpeg libsndfile1 \
-    && git lfs install \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+
+# System Dependencies for builder (minimal; runtime deps installed later)
+RUN set -eux; \
+        retry() { \
+            for i in $(seq 1 5); do \
+                echo "apt-get update attempt $i"; \
+                apt-get update && return 0; \
+                echo "apt-get update failed (attempt $i), sleeping 10s"; \
+                sleep 10; \
+            done; \
+            return 1; \
+        }; \
+        retry; \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                git git-lfs curl wget \
+        ; \
+        git lfs install; \
+        apt-get clean; \
+        rm -rf /var/lib/apt/lists/*
 
 # cuDNN is already included in the base image
 
@@ -37,11 +47,9 @@ WORKDIR /opt
 RUN git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git
 
 WORKDIR ${COMFYUI_PATH}
-RUN pip install -r requirements.txt
 
-# Install additional packages
-COPY requirements/base.txt /tmp/base.txt
-RUN pip install -r /tmp/base.txt || true
+
+# (Skip Python installs in builder to reduce layer size)
 
 # Install Custom Nodes (clone only; skip per-node pip here)
 COPY scripts/install_nodes.sh /tmp/install_nodes.sh
@@ -50,15 +58,15 @@ RUN chmod +x /tmp/install_nodes.sh && \
 
 # (Skip node requirements in builder)
 
-# Install node requirements
-COPY requirements/nodes.txt /tmp/nodes.txt
-RUN pip install -r /tmp/nodes.txt || true
+# Strip VCS metadata to shrink layers before COPY to final
+RUN find ${COMFYUI_PATH} -type d -name .git -prune -exec rm -rf {} +
 
 # Copy model download script
 COPY scripts/download_models.py /tmp/download_models.py
 
+
 # Final Stage - auch PyTorch Runtime Image
-FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-runtime-ubuntu22.04
+FROM --platform=linux/amd64 runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -75,14 +83,30 @@ ENV TZ=UTC \
     COMFYUI_PATH=/opt/ComfyUI \
     PATH="/home/runpod/.local/bin:${PATH}"
 
+
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git git-lfs curl wget \
-    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
-    libgoogle-perftools-dev tcmalloc-minimal4 \
-    ffmpeg libsndfile1 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+        retry() { \
+            for i in $(seq 1 5); do \
+                echo "apt-get update attempt $i"; \
+                apt-get update && return 0; \
+                echo "apt-get update failed (attempt $i), sleeping 10s"; \
+                sleep 10; \
+            done; \
+            return 1; \
+        }; \
+        retry; \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                git git-lfs curl wget \
+                libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
+                libgoogle-perftools-dev libtcmalloc-minimal4 \
+                ffmpeg libsndfile1 \
+        ; \
+        apt-get clean; \
+        rm -rf /var/lib/apt/lists/*
+
+# Set LD_PRELOAD only after libtcmalloc is installed to avoid preload warnings during earlier steps
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4
 
 # Create non-root user
 RUN useradd -m -u 1000 -s /bin/bash runpod && \
