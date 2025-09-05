@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM nvidia/cuda:12.8-devel-ubuntu22.04 AS builder
+FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04 AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -29,18 +29,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install cuDNN
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcudnn9-dev libcudnn9 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# cuDNN is already included in the base image
 
 # Upgrade pip
 RUN python3 -m pip install --upgrade pip wheel setuptools
 
-# Install PyTorch 2.8.0 with CUDA 12.8
-RUN python3 -m pip install torch==2.8.0+cu128 torchvision==0.20.0+cu128 torchaudio==2.8.0+cu128 \
-    --index-url https://download.pytorch.org/whl/cu128
+# PyTorch 2.8.0 with CUDA 12.8 is already included in the base image
 
 # Install ComfyUI
 WORKDIR /opt
@@ -66,7 +60,7 @@ RUN python3 -m pip install -r /tmp/nodes.txt || true
 COPY scripts/download_models.py /tmp/download_models.py
 
 # Final Stage
-FROM nvidia/cuda:12.8-runtime-ubuntu22.04
+FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-runtime-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG PYTHON_VERSION=3.11
@@ -91,7 +85,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
     libgoogle-perftools-dev tcmalloc-minimal4 \
     ffmpeg libsndfile1 \
-    libcudnn9 \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python \
     && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 \
     && apt-get clean \
