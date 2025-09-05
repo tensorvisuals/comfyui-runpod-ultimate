@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM nvidia/cuda:12.8-devel-ubuntu22.04 AS builder
+FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -72,7 +72,7 @@ RUN if [ "${BUILD_TYPE}" = "full" ]; then \
     fi
 
 # Final Stage
-FROM nvidia/cuda:12.8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG PYTHON_VERSION=3.11
