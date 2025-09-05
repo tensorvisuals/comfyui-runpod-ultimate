@@ -1,0 +1,80 @@
+{
+  "name": "ComfyUI Ultimate",
+  "description": "Production-ready Docker image for ComfyUI with FLUX.1 and Qwen-Image support, optimized for modern GPUs",
+  "author": "tensorvisuals",
+  "github_url": "https://github.com/tensorvisuals/comfyui-runpod-ultimate",
+  "version": "1.0.0",
+  "image": "ghcr.io/tensorvisuals/comfyui-runpod-ultimate:standard",
+  "icon": "https://raw.githubusercontent.com/tensorvisuals/comfyui-runpod-ultimate/dev/assets/icon.png",
+  "tags": ["comfyui", "ai", "stable-diffusion", "flux", "qwen-image"],
+  "categories": ["AI", "Diffusion", "Image Generation", "Stable Diffusion"],
+  "ports": [
+    {
+      "published": 8188,
+      "target": 8188,
+      "protocol": "tcp",
+      "name": "comfyui",
+      "description": "ComfyUI web interface"
+    }
+  ],
+  "volumes": [
+    {
+      "name": "workspace",
+      "destination": "/workspace",
+      "required": true
+    }
+  ],
+  "gpu": {
+    "required": true,
+    "minimum_count": 1,
+    "recommended_drivers": {
+      "nvidia": ">=545.0"
+    },
+    "recommended_vram": 24.0
+  },
+  "env_vars": {
+    "BUILD_TYPE": {
+      "default": "standard",
+      "description": "Build variant (minimal, standard, full)",
+      "required": false
+    },
+    "HF_TOKEN": {
+      "description": "Hugging Face token for downloading gated models",
+      "required": false
+    },
+    "CIVITAI_TOKEN": {
+      "description": "Civitai API token for downloading models",
+      "required": false
+    },
+    "COMFYUI_EXTRA_ARGS": {
+      "default": "",
+      "description": "Additional arguments for ComfyUI server",
+      "required": false
+    }
+  },
+  "resources": {
+    "memory": {
+      "min_gb": 16,
+      "recommended_gb": 32
+    },
+    "disk": {
+      "min_gb": 50,
+      "recommended_gb": 200
+    }
+  },
+  "pre_run": {
+    "command": "echo '🚀 ComfyUI Ultimate initializing...'"
+  },
+  "health_check": {
+    "port": 8188,
+    "type": "http",
+    "path": "/",
+    "interval_seconds": 30,
+    "timeout_seconds": 10,
+    "retries": 5
+  },
+  "support": {
+    "url": "https://github.com/tensorvisuals/comfyui-runpod-ultimate/issues",
+    "email": "support@example.com"
+  }
+}
