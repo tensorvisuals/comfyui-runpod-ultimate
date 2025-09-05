@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM pytorch/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04 AS builder
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-devel-ubuntu22.04 AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
@@ -49,7 +49,7 @@ RUN pip install -r /tmp/nodes.txt || true
 COPY scripts/download_models.py /tmp/download_models.py
 
 # Final Stage - auch PyTorch Runtime Image
-FROM pytorch/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-runtime-ubuntu22.04
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn8-runtime-ubuntu22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
