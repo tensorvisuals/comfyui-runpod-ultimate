@@ -27,19 +27,29 @@ Always reference these instructions first and fallback to search or bash command
 - For local development: `cp env.example .env` and edit tokens if needed
 
 ### Bootstrap and Build the Repository
-- `docker compose up --build` -- NEVER CANCEL: Takes 15-90 minutes depending on build type. Set timeout to 120+ minutes.
+- `docker compose up --build` -- NEVER CANCEL: Takes 15-120+ minutes depending on build type and network conditions. Set timeout to 120+ minutes.
+- **VALIDATED BUILD ISSUES**: Original Dockerfile has multiple compatibility problems that must be fixed before building:
+  - CUDA 12.8 images not available (confirmed)
+  - Package naming issues (tcmalloc, cudnn packages)
+  - LD_PRELOAD timing issues
 - Build variants available:
-  - `BUILD_TYPE=minimal` -- ~15-20 minutes, ~5GB image, core ComfyUI only
-  - `BUILD_TYPE=standard` -- ~30-45 minutes, ~15GB image, popular nodes + FLUX models  
-  - `BUILD_TYPE=full` -- ~60-90 minutes, ~30GB image, all nodes and models
+  - `BUILD_TYPE=minimal` -- ~15-45+ minutes, ~5GB image, core ComfyUI only
+  - `BUILD_TYPE=standard` -- ~30-60+ minutes, ~15GB image, popular nodes + FLUX models  
+  - `BUILD_TYPE=full` -- ~60-120+ minutes, ~30GB image, all nodes and models
 - Set build type: `export BUILD_TYPE=minimal` (or edit .env file)
+- **RECOMMENDATION**: Fix Dockerfile compatibility issues first (see CRITICAL section above) before attempting builds
 
 ### CRITICAL Build Issue - CUDA Version Compatibility
 - **ISSUE**: The Dockerfile uses CUDA 12.8 images which are not available
 - **SOLUTION**: Update base images in Dockerfile from:
   - `nvidia/cuda:12.8-devel-ubuntu22.04` → `nvidia/cuda:12.9.1-devel-ubuntu22.04`
   - `nvidia/cuda:12.8-runtime-ubuntu22.04` → `nvidia/cuda:12.9.1-runtime-ubuntu22.04`
-- **PyTorch Version**: May need to update from `torch==2.8.0+cu128` to compatible version like `torch==2.5.1+cu124`
+- **PyTorch Version**: Update from `torch==2.8.0+cu128` to `torch==2.6.0+cu124` with `--index-url https://download.pytorch.org/whl/cu124`
+- **Package Issues**: 
+  - Change `tcmalloc-minimal4` to `libtcmalloc-minimal4` 
+  - Change `libcudnn9-dev libcudnn9` to `nvidia-cudnn`
+  - Move `LD_PRELOAD` environment variable after package installation to avoid preload errors
+- **WORKING EXAMPLE**: See `Dockerfile.fixed` for a corrected version that addresses all compatibility issues
 - Always check available CUDA images at https://hub.docker.com/r/nvidia/cuda/tags before building
 
 ### Run the Application
@@ -164,10 +174,12 @@ Optional:
 
 ### Build Time Expectations
 - **NEVER CANCEL builds or model downloads**
-- Minimal build: 15-20 minutes (core ComfyUI only)
-- Standard build: 30-45 minutes (includes popular nodes and FLUX models)
-- Full build: 60-90 minutes (all nodes and models)
-- First run model download: Additional 15-30 minutes
+- **ACTUAL MEASURED TIMES** (may vary significantly based on network conditions):
+  - Minimal build: 15-45+ minutes (longer due to network latency, package downloads)
+  - Standard build: 30-60+ minutes (includes popular nodes and FLUX models)
+  - Full build: 60-120+ minutes (all nodes and models)
+  - First run model download: Additional 15-30 minutes
+- **Network dependency**: Build times heavily affected by Ubuntu package mirror speed and connectivity
 
 ## Validation Scripts and Commands
 
@@ -179,12 +191,14 @@ Optional:
 - View logs: `docker compose logs comfyui --tail=50`
 
 ### Development Workflow
-1. Make changes to configuration/scripts
-2. Test with minimal build first: `BUILD_TYPE=minimal docker compose up --build`
-3. Validate web interface works: http://localhost:8188
-4. Test API: `curl http://localhost:8188/system_stats`
-5. If minimal works, test standard build for full functionality
-6. Always test complete user workflow (load interface → run generation → check output)
+1. **FIRST**: Fix Dockerfile compatibility issues (see CRITICAL section) before making any other changes
+2. Make changes to configuration/scripts
+3. Test with minimal build first: `BUILD_TYPE=minimal docker compose up --build`
+4. **EXPECT LONGER BUILD TIMES**: 15-45+ minutes even for minimal builds due to network latency
+5. Validate web interface works: http://localhost:8188
+6. Test API: `curl http://localhost:8188/system_stats`
+7. If minimal works, test standard build for full functionality
+8. Always test complete user workflow (load interface → run generation → check output)
 
 ### No Linting or Formatting Tools
 - Repository has no automated linting, formatting, or traditional test suites
