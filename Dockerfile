@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1.7
-FROM runpod/pytorch:2.8.0-py3.11-cuda12.8.1-cudnn-devel-ubuntu22.04 AS builder
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-devel AS builder
 
 # Build Args (NOT persisted in final image)
 ARG DEBIAN_FRONTEND=noninteractive
-ARG PYTHON_VERSION=3.11
 ARG BUILD_TYPE=minimal
 ARG HF_TOKEN=""
 ARG CIVITAI_TOKEN=""
@@ -15,16 +14,13 @@ ENV TZ=UTC \
     PYTHONUNBUFFERED=1 \
     COMFYUI_PATH=/opt/ComfyUI
 
-# System Dependencies
+# System Dependencies (PyTorch image already includes Python)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git git-lfs curl wget aria2 rsync unzip p7zip-full \
     build-essential pkg-config cmake ninja-build \
-    python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python3-pip python3-venv \
     libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
     libgoogle-perftools-dev tcmalloc-minimal4 \
     ffmpeg libsndfile1 \
-    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python \
-    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 \
     && git lfs install \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -60,10 +56,9 @@ RUN python3 -m pip install -r /tmp/nodes.txt || true
 COPY scripts/download_models.py /tmp/download_models.py
 
 # Final Stage
-FROM runpod/pytorch:0.7.0-ubuntu2204-cu1281-torch271
+FROM pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG PYTHON_VERSION=3.11
 
 # Runtime Environment
 ENV TZ=UTC \
@@ -78,15 +73,12 @@ ENV TZ=UTC \
     COMFYUI_PATH=/opt/ComfyUI \
     LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4
 
-# Install runtime dependencies
+# Install runtime dependencies (PyTorch image already includes Python)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git git-lfs curl wget \
-    python${PYTHON_VERSION} python3-pip \
     libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
     libgoogle-perftools-dev tcmalloc-minimal4 \
     ffmpeg libsndfile1 \
-    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python \
-    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -97,8 +89,7 @@ RUN useradd -m -u 1000 -s /bin/bash runpod && \
 
 # Copy from builder
 COPY --from=builder --chown=runpod:runpod /opt/ComfyUI ${COMFYUI_PATH}
-COPY --from=builder --chown=runpod:runpod /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python${PYTHON_VERSION}
-COPY --from=builder --chown=runpod:runpod /usr/local/bin /usr/local/bin
+COPY --from=builder --chown=runpod:runpod /opt/conda /opt/conda
 
 # Setup configs and workflows
 COPY --chown=runpod:runpod configs/server_config.json ${COMFYUI_PATH}/server_config.json
